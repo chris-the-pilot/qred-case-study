@@ -31,9 +31,19 @@ For the best understanding of the system, follow this path:
 ## Steps
 
 1. Navigate to the service/ directory and install dependencies: `npm install`
-2. Convert .ts files to .js for SAM support: `npm run watch`
-3. Run the service locally using AWS SAM: `npm run local`
-4. Once running, access the APIs via `http://localhost:3000`
+2. Create .env file with: `POSTGRES_USER=dev_user
+POSTGRES_PASSWORD=dev_pass123
+POSTGRES_DB=dev_db
+POSTGRES_PORT=5432
+DATABASE_URL="postgresql://dev_user:dev_pass123@localhost:5432/dev_db?schema=public"`
+3. Run the DB containers: `docker-compose up`
+4. Generate the Prisma Client: `npx prisma generate`
+5. Push the schema to the database: `npx prisma db push`
+6. Seed the database: `npx prisma db seed`
+7. Convert .ts files to .js for SAM support: `npm run watch`
+8. Copy node_modules into the dist/ directory: `cp -R node_modules dist/node_modules`
+9. Run the service locally using AWS SAM: `npm run local`
+10. Once running, access the APIs via: `http://localhost:3000`
 
 ## Running Tests
 
