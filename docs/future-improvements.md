@@ -17,6 +17,8 @@ This document outlines areas for potential growth and refinement in the system, 
 
 ## Security & Compliance
 
+- Alignment with OWASP
+- Dependency and code scanning
 - Implement request validation, rate limiting, and secure headers
 - Implement Authentication and Authorization
 - Enforce least-privilege IAM policies
