@@ -1,0 +1,177 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model card {
+  card_id      String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  account_id   String        @db.Uuid
+  pan_token    String        @unique
+  pan_last4    String?       @db.Char(4)
+  expiry_date  DateTime      @db.Date
+  status       String
+  activated_at DateTime?     @db.Timestamptz(6)
+  blocked_at   DateTime?     @db.Timestamptz(6)
+  created_at   DateTime      @default(now()) @db.Timestamptz(6)
+  created_by   String        @db.Uuid
+  updated_at   DateTime      @default(now()) @db.Timestamptz(6)
+  updated_by   String?       @db.Uuid
+  version      BigInt        @default(1)
+  is_deleted   Boolean       @default(false)
+  card_account card_account  @relation(fields: [account_id], references: [account_id], onDelete: NoAction, onUpdate: NoAction)
+  transaction  transaction[]
+
+  @@index([pan_last4], map: "idx_card_pan_last4")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model card_account {
+  account_id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  company_id        String      @db.Uuid
+  region_code       String
+  currency_code     String      @db.Char(3)
+  credit_limit      Decimal     @db.Decimal(14, 2)
+  available_credit  Decimal     @db.Decimal(14, 2)
+  statement_balance Decimal     @db.Decimal(14, 2)
+  cycle_start_day   Int         @db.SmallInt
+  created_at        DateTime    @default(now()) @db.Timestamptz(6)
+  created_by        String      @db.Uuid
+  updated_at        DateTime    @default(now()) @db.Timestamptz(6)
+  updated_by        String?     @db.Uuid
+  version           BigInt      @default(1)
+  is_deleted        Boolean     @default(false)
+  card              card[]
+  currency          currency    @relation(fields: [currency_code], references: [currency_code], onDelete: NoAction, onUpdate: NoAction)
+  region            region      @relation(fields: [region_code], references: [region_code], onDelete: NoAction, onUpdate: NoAction)
+  payment           payment[]
+  statement         statement[]
+
+  @@unique([company_id, region_code])
+  @@index([company_id], map: "idx_card_account_company")
+}
+
+model currency {
+  currency_code  String         @id @db.Char(3)
+  symbol         String
+  decimal_places Int            @db.SmallInt
+  created_at     DateTime       @default(now()) @db.Timestamptz(6)
+  created_by     String         @db.Uuid
+  updated_at     DateTime       @default(now()) @db.Timestamptz(6)
+  updated_by     String?        @db.Uuid
+  is_deleted     Boolean        @default(false)
+  card_account   card_account[]
+  payment        payment[]
+  region         region[]
+  statement      statement[]
+  transaction    transaction[]
+}
+
+model event_log {
+  event_id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  occurred_at    DateTime @default(now()) @db.Timestamptz(6)
+  entity_type    String
+  entity_id      String   @db.Uuid
+  event_type     String
+  performed_by   String   @db.Uuid
+  performed_from String?
+  reason_code    String?
+  old_value      Json?
+  new_value      Json?
+  correlation_id String?  @db.Uuid
+
+  @@index([entity_type, entity_id], map: "idx_event_entity")
+  @@index([event_type, occurred_at], map: "idx_event_type_time")
+}
+
+model payment {
+  payment_id     String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  account_id     String       @db.Uuid
+  statement_id   String       @db.Uuid
+  amount         Decimal      @db.Decimal(14, 2)
+  currency_code  String       @db.Char(3)
+  payment_method String
+  received_at    DateTime     @default(now()) @db.Timestamptz(6)
+  created_by     String       @db.Uuid
+  created_at     DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime     @default(now()) @db.Timestamptz(6)
+  updated_by     String?      @db.Uuid
+  version        BigInt       @default(1)
+  card_account   card_account @relation(fields: [account_id], references: [account_id], onDelete: NoAction, onUpdate: NoAction)
+  currency       currency     @relation(fields: [currency_code], references: [currency_code], onDelete: NoAction, onUpdate: NoAction)
+  statement      statement    @relation(fields: [statement_id], references: [statement_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([account_id], map: "idx_payment_account")
+  @@index([statement_id], map: "idx_payment_statement")
+}
+
+model region {
+  region_code           String         @id
+  name                  String
+  timezone              String
+  locale                String
+  default_currency_code String?        @db.Char(3)
+  created_at            DateTime       @default(now()) @db.Timestamptz(6)
+  created_by            String         @db.Uuid
+  updated_at            DateTime       @default(now()) @db.Timestamptz(6)
+  updated_by            String?        @db.Uuid
+  is_deleted            Boolean        @default(false)
+  card_account          card_account[]
+  currency              currency?      @relation(fields: [default_currency_code], references: [currency_code], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model statement {
+  statement_id       String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  account_id         String       @db.Uuid
+  period_start       DateTime     @db.Date
+  period_end         DateTime     @db.Date
+  currency_code      String       @db.Char(3)
+  total_due_amount   Decimal      @default(0) @db.Decimal(14, 2)
+  minimum_due_amount Decimal      @default(0) @db.Decimal(14, 2)
+  due_date           DateTime     @db.Date
+  paid_amount        Decimal      @default(0) @db.Decimal(14, 2)
+  paid_at            DateTime?    @db.Timestamptz(6)
+  pdf_url            String?
+  generated_at       DateTime     @default(now()) @db.Timestamptz(6)
+  created_at         DateTime     @default(now()) @db.Timestamptz(6)
+  created_by         String       @db.Uuid
+  updated_at         DateTime     @default(now()) @db.Timestamptz(6)
+  updated_by         String?      @db.Uuid
+  version            BigInt       @default(1)
+  is_deleted         Boolean      @default(false)
+  payment            payment[]
+  card_account       card_account @relation(fields: [account_id], references: [account_id], onDelete: NoAction, onUpdate: NoAction)
+  currency           currency     @relation(fields: [currency_code], references: [currency_code], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([account_id, period_start])
+  @@index([account_id, period_end], map: "idx_statement_account_period")
+}
+
+model transaction {
+  transaction_id String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  card_id        String   @db.Uuid
+  posted_at      DateTime @db.Timestamptz(6)
+  amount         Decimal  @db.Decimal(14, 2)
+  currency_code  String   @db.Char(3)
+  exchange_rate  Decimal  @db.Decimal(18, 9)
+  fx_rate_date   DateTime @db.Date
+  merchant_id    String?  @db.Uuid
+  status         String   @default("posted")
+  merchant_name  String?
+  category       String?
+  created_at     DateTime @default(now()) @db.Timestamptz(6)
+  created_by     String   @db.Uuid
+  updated_at     DateTime @default(now()) @db.Timestamptz(6)
+  updated_by     String?  @db.Uuid
+  version        BigInt   @default(1)
+  is_deleted     Boolean  @default(false)
+  card           card     @relation(fields: [card_id], references: [card_id], onDelete: NoAction, onUpdate: NoAction)
+  currency       currency @relation(fields: [currency_code], references: [currency_code], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([merchant_id], map: "idx_transaction_merchant")
+  @@index([posted_at], map: "idx_transaction_posted_at")
+}
