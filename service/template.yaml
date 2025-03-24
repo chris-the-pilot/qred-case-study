@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Environment:
+      Variables:
+        DATABASE_URL: "postgresql://dev_user:dev_pass123@host.docker.internal:5432/dev_db?schema=public"
+
+Resources:
+  getAccounts:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/getAccounts.handler
+      CodeUri: dist/
+      Events:
+        GetRoot:
+          Type: Api
+          Properties:
+            Path: /cards/v1/accounts
+            Method: GET
+
+  getAccount:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/getAccount.handler
+      CodeUri: dist/
+      Events:
+        GetRoot:
+          Type: Api
+          Properties:
+            Path: /cards/v1/accounts/{accountId}
+            Method: GET
+
+  ListCardsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/listCards.handler
+      CodeUri: dist/
+      Events:
+        ListCards:
+          Type: Api
+          Properties:
+            Path: /cards/v1/accounts/{accountId}/cards
+            Method: GET
+
+  UpdateCardFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/updateCard.handler
+      CodeUri: dist/
+      Events:
+        UpdateCard:
+          Type: Api
+          Properties:
+            Path: /cards/v1/cards/{cardId}
+            Method: PATCH
+
+  ListTransactionsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/listTransactions.handler
+      CodeUri: dist/
+      Events:
+        UpdateCard:
+          Type: Api
+          Properties:
+            Path: /cards/v1/cards/{cardId}/transactions
+            Method: GET
+
+  ListStatementsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/listStatements.handler
+      CodeUri: dist/
+      Events:
+        UpdateCard:
+          Type: Api
+          Properties:
+            Path: /cards/v1/accounts/{accountId}/statements
+            Method: GET
+
+  GetStatementFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/getStatement.handler
+      CodeUri: dist/
+      Events:
+        UpdateCard:
+          Type: Api
+          Properties:
+            Path: /cards/v1/accounts/{accountId}/statements/{periodStart}
+            Method: GET
